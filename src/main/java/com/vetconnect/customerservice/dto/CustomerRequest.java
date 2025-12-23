@@ -1,11 +1,15 @@
 package com.vetconnect.customerservice.dto;
-
 import java.time.LocalDate;
-import java.time.LocalDateTime;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+
 
 public class CustomerRequest {
 	private String firstName;
 	private String lastName;
+	
+	@NotBlank(message = "Email must not be blank or empty")
+	@Email(message = "email must be valid")
 	private String email;
 	private String phoneNumber;
 	private LocalDate dateOfBirth;

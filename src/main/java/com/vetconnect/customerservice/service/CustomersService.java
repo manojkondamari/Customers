@@ -16,10 +16,12 @@ public interface CustomersService {
 	CustomerResponse getCustomerDetails(int id);
 	
 	CustomerResponse updateCustomerDetails(int id, CustomerRequest request);
-	
+	CustomerResponse updateCustomerEmail(int id, String email);
 	void deleteCustomerDetails(int id);
 	
 	List<AddressResponse> getAddressForCustomer(int id);
 	
 	AddressResponse registerCustomerAddresses(int id, AddressRequest addressRequest);
+	
+	
 }

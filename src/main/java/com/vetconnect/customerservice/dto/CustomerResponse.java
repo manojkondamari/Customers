@@ -12,7 +12,15 @@ public class CustomerResponse {
 	private LocalDate dateOfBirth;
 	private LocalDateTime createdAt;
 	private boolean isActive;
+	private LocalDateTime updatedAt;
 	
+	
+	public LocalDateTime getUpdatedAt() {
+		return updatedAt;
+	}
+	public void setUpdatedAt(LocalDateTime updatedAt) {
+		this.updatedAt = updatedAt;
+	}
 	public String getPhoneNumber() {
 		return phoneNumber;
 	}
@@ -49,12 +57,12 @@ public class CustomerResponse {
 	public void setEmail(String email) {
 		this.email = email;
 	}
-	public String getPhoneNumer() {
-		return phoneNumber;
-	}
-	public void setPhoneNumer(String phoneNumer) {
-		this.phoneNumber = phoneNumer;
-	}
+//	public String getPhoneNumer() {
+//		return phoneNumber;
+//	}
+//	public void setPhoneNumer(String phoneNumer) {
+//		this.phoneNumber = phoneNumer;
+//	}
 	public LocalDate getDateOfBirth() {
 		return dateOfBirth;
 	}
