@@ -3,6 +3,7 @@ package com.vetconnect.customerservice.entity;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Date;
+import java.util.List;
 
 import org.hibernate.engine.internal.Cascade;
 
@@ -85,11 +86,11 @@ public class Customers {
 		this.updatedAt = updatedAt;
 	}
 
-	public java.util.List<Address> getAddresses() {
+	public List<Address> getAddresses() {
 		return addresses;
 	}
 
-	public void setAddresses(java.util.List<Address> addresses) {
+	public void setAddresses(List<Address> addresses) {
 		this.addresses = addresses;
 	}
 
