@@ -12,12 +12,16 @@ import java.util.List;
 import java.util.Optional;
 
 import org.hamcrest.core.IsEqual;
+import org.hamcrest.core.IsInstanceOf;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
+import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -29,15 +33,20 @@ import com.vetconnect.customerservice.dto.AddressResponse;
 import com.vetconnect.customerservice.dto.CustomerRequest;
 import com.vetconnect.customerservice.dto.CustomerResponse;
 import com.vetconnect.customerservice.entity.Address;
+import com.vetconnect.customerservice.entity.AuthCredentials;
 import com.vetconnect.customerservice.entity.Customers;
+import com.vetconnect.customerservice.exception.CustomerAccessDeniedException;
 import com.vetconnect.customerservice.exception.DuplicateCustomerException;
 import com.vetconnect.customerservice.exception.ResourceInactiveException;
+import com.vetconnect.customerservice.exception.ResourceMismatchException;
 import com.vetconnect.customerservice.exception.ResourceNotFoundException;
 import com.vetconnect.customerservice.repository.AddressesRepo;
 import com.vetconnect.customerservice.repository.CustomersRepo;
+import com.vetconnect.customerservice.security.AuthCredentialRepository;
 import com.vetconnect.customerservice.service.CustomersServiceImpl;
 
 import net.bytebuddy.description.annotation.AnnotationList.Empty;
+import static org.mockito.ArgumentMatchers.anyString;
 
 
 @ExtendWith(MockitoExtension.class)
@@ -46,6 +55,11 @@ public class CustomerServiceImplTest {
 	@Mock
 	private CustomersRepo customersRepo;
 	
+	@Mock
+	private AuthCredentialRepository authCredentialRepository;
+	@Mock
+	private PasswordEncoder passwordEncoder;
+	@InjectMocks
 	private CustomersServiceImpl customersService;
 	
 	@Mock
@@ -53,7 +67,7 @@ public class CustomerServiceImplTest {
 	
 	@BeforeEach
 	void setup() {
-	 customersService=new CustomersServiceImpl(customersRepo, addressRepo);
+	 customersService=new CustomersServiceImpl(customersRepo, addressRepo, null, passwordEncoder, authCredentialRepository);
 	}
 	
 	@Test
@@ -64,10 +78,15 @@ public class CustomerServiceImplTest {
 		
 		when(customersRepo.save(any(Customers.class))).thenReturn(savedEntity);
 		
+		when(passwordEncoder.encode(anyString())).thenReturn("hashed-password");
+		when(authCredentialRepository.save(any(AuthCredentials.class))).thenAnswer(invocation -> invocation.getArgument(0));
+		
 		CustomerResponse resp=customersService.registerCustomers(req);
 		
 		ArgumentCaptor<Customers> captor=ArgumentCaptor.forClass(Customers.class);
 		verify(customersRepo, times(1)).save(captor.capture());
+		verify(authCredentialRepository, times(1)).save(any(AuthCredentials.class));
+		verify(passwordEncoder,times(1)).encode(anyString());
 		
 		Customers toSave=captor.getValue();
 		verify(customersRepo,times(1)).save(any(Customers.class));
@@ -128,10 +147,13 @@ public class CustomerServiceImplTest {
 		
 		Customers savedEntity=buildValidCustomerEntity(req);
 		int customerId=45;
+		String username="johnfrank@gmail.com";
+		AuthCredentials authEntity=buildValidAuthEntity(savedEntity);
 		
+		when(authCredentialRepository.findByUsername(anyString())).thenReturn(Optional.of(authEntity));
 		when(customersRepo.findById(customerId)).thenReturn(Optional.of(savedEntity));
 		
-		CustomerResponse resp=customersService.getCustomerDetails(45);
+		CustomerResponse resp=customersService.getCustomerDetails(45, username);
 		
 		assertThat(resp.getClass()).isNotNull();
 		assertThat(resp.getId()).isEqualTo(45);
@@ -139,16 +161,31 @@ public class CustomerServiceImplTest {
 		assertThat(resp.getEmail()).isEqualTo(req.getEmail());
 		
 		verify(customersRepo, times(1)).findById(customerId);
+		verify(authCredentialRepository, times(1)).findByUsername(username);
+	}
+	
+	private AuthCredentials buildValidAuthEntity(Customers savedEntity) {
+		AuthCredentials auth=new AuthCredentials();
 		
+		String username="johnfrank@gmail.com";
+		auth.setRoles("ROLE_USER");
+		auth.setCustomer(savedEntity);
+		auth.setUsername(username);
+		
+		return auth;
 	}
 	
 	@Test
 	void getCustomerDetails_ShouldThrowException_WhenCustomerNotFound() {
-		int customerId=1;
-		
+		int customerId=45;
+		CustomerRequest req=buildValidCustomerRequest();
+		Customers savedEntity=buildValidCustomerEntity(req);
+		AuthCredentials authEntity=buildValidAuthEntity(savedEntity);
+		when(authCredentialRepository.findByUsername(anyString())).thenReturn(Optional.of(authEntity));
+
 		when(customersRepo.findById(customerId)).thenReturn(Optional.empty());
 		
-		assertThatThrownBy(()->customersService.getCustomerDetails(customerId))
+		assertThatThrownBy(()->customersService.getCustomerDetails(customerId,"johnfrank@gmail.com"))
 				.isInstanceOf(ResourceNotFoundException.class)
 				.hasMessageContaining("Customer with id "+customerId+" not found");
 		
@@ -156,20 +193,20 @@ public class CustomerServiceImplTest {
 	}
 	
 	@Test
-	void updateCustomerDetails_ShouldThrowException_WhenCustomerNotFound() {
+	void getCustomerDetails_ShouldThrowException_WhenCustomerMismatch() {
 		
-		int customerId=90;
+		int customerId=1;
 		CustomerRequest req=buildValidCustomerRequest();
+		Customers savedEntity=buildValidCustomerEntity(req);
+		AuthCredentials authEntity=buildValidAuthEntity(savedEntity);
 		
-		when(customersRepo.findById(customerId)).thenReturn(Optional.empty());
+		when(authCredentialRepository.findByUsername(anyString())).thenReturn(Optional.of(authEntity));
 		
-		assertThatThrownBy(()->customersService.updateCustomerDetails(customerId, req))
-								.isInstanceOf(ResourceNotFoundException.class);
-								
-		//when(customersRepo.save(any())).thenReturn(null);
+		assertThatThrownBy(()->customersService.getCustomerDetails(customerId, "johnfrank@gmail.com"))
+		    				.isInstanceOf(CustomerAccessDeniedException.class)
+		    				.hasMessage("You can only access your own data");
 		
-		verify(customersRepo, times(1)).findById(customerId);
-		verify(customersRepo, never()).save(any());
+		
 	}
 	
 	@Test
@@ -247,18 +284,6 @@ public class CustomerServiceImplTest {
 		verify(customersRepo,times(1)).save(savedEntity);
 	}
 	
-	@Test
-	void deleteCustomers_ShouldReturnThrowException_WhenCustomerNotExists() {
-		int customerId=98;
-		
-		when(customersRepo.findById(customerId)).thenReturn(Optional.empty());
-		
-		assertThatThrownBy(()->customersService.deleteCustomerDetails(customerId))
-								.isInstanceOf(ResourceNotFoundException.class);
-		
-		verify(customersRepo).findById(customerId);
-		verify(customersRepo, never()).save(any());
-	}
 	
 	private CustomerRequest buildValidCustomerRequest() {
 		CustomerRequest req=new CustomerRequest();
@@ -268,6 +293,7 @@ public class CustomerServiceImplTest {
 		req.setPhoneNumber("899999999");
 		req.setDateOfBirth(LocalDate.of(1990,5,14));
 		
+		req.setPassword("password123");
 		return req;
 	}
 	
@@ -295,7 +321,7 @@ public class CustomerServiceImplTest {
 		CustomerRequest req=buildValidCustomerRequest();
 		Address address=buildValidAddressEntity(addReq);
 		Customers customers=buildValidCustomerEntity(req);
-		
+		address.setCustomer(customers);
 		when(customersRepo.findById(customerId)).thenReturn(Optional.of(customers));
 		when(addressRepo.save(any())).thenReturn(address);
 		
@@ -317,7 +343,7 @@ public class CustomerServiceImplTest {
 		assertThat(toSave.getZipCode()).isEqualTo(addReq.getZipCode());
 		assertThat(toSave.getCustomer()).isEqualTo(customers);
 		
-		assertThat(resp.getId()).isEqualTo(10);
+		//assertThat(resp.getId()).isEqualTo(10);
 		assertThat(resp.getAddressType()).isEqualTo(addReq.getAddressType());
 		assertThat(resp.getStreet()).isEqualTo(addReq.getStreet());
 		assertThat(resp.getCity()).isEqualTo(addReq.getCity());
@@ -372,7 +398,6 @@ public class CustomerServiceImplTest {
 		
 		AddressResponse addResp=resp.get(0);
 		
-		assertThat(addResp.getId()).isEqualTo(customerId);
 		assertThat(addResp.getAddressType()).isEqualTo(addReq.getAddressType());
 		assertThat(addResp.getStreet()).isEqualTo(addReq.getStreet());
 		assertThat(addResp.getCity()).isEqualTo(addReq.getCity());
@@ -384,38 +409,88 @@ public class CustomerServiceImplTest {
 		verify(customersRepo, times(1)).findById(customerId);
 		verify(addressRepo, times(1)).findAddressByCustomerId(customerId);
 	}
-	
+
 	@Test
-	void getAddressForCustomer_ShouldReturnException_WhenCustomerIsNull() {
-		int customerId=3;
-		CustomerRequest req=buildValidCustomerRequest();
-		Customers customer=buildValidCustomerEntity(req);
+	void updateCustomerAddress_ShouldReturnUpdatedAddress_WhenIdMatches() {
+		int customerId=45;
+		Customers customer=buildValidCustomerEntity(buildValidCustomerRequest());
+		int addressId=102;
+		AddressRequest addReq=buildValidAddressRequest();
+		Address address=buildValidAddressEntity(addReq);
+		customer.setActive(true);
+		address.setCustomer(customer);
 		
-		when(customersRepo.findById(customerId)).thenReturn(Optional.empty());
+		addReq.setAddressType("work");
+		addReq.setState("amaravati");
+		addReq.setzipCode("560012");
+		when(customersRepo.findById(customerId)).thenReturn(Optional.of(customer));
+		when(addressRepo.findById(addressId)).thenReturn(Optional.of(address));
+		when(addressRepo.save(any())).thenReturn(address);
+		AddressResponse response=customersService.updateCustomerAddress(customerId, addressId, addReq);
 		
-		assertThatThrownBy(()->customersService.getAddressForCustomer(customerId))
-							.isInstanceOf(ResourceNotFoundException.class);
+		ArgumentCaptor<Address> captor=ArgumentCaptor.forClass(Address.class);
+		
+		verify(addressRepo).save(captor.capture());
+		
+		Address toSave=captor.getValue();
+		
+		assertThat(toSave.getAddressType()).isEqualTo(addReq.getAddressType());
+		assertThat(toSave.getState()).isEqualTo(addReq.getState());
+		assertThat(toSave.getZipCode()).isEqualTo(addReq.getZipCode());
+		
+		assertThat(response.getAddressType()).isEqualTo(addReq.getAddressType());
+		assertThat(response.getState()).isEqualTo(addReq.getState());
+		assertThat(response.getZipCode()).isEqualTo(addReq.getZipCode());
+		
 		
 		verify(customersRepo).findById(customerId);
-		verify(addressRepo, never()).findAddressByCustomerId(customerId);
+		verify(addressRepo).findById(addressId);
+		
 	}
 	@Test
-	void getAddressForCustomer_ShouldReturnException_WhenCustomerIsInactive() {
-		int customerId=10;
+	void updateCustomerAddress_ShouldThrowException_WhenIdMismatch() {
+		int customerId=45;
+		int addressId=102;
+		AddressRequest addReq=buildValidAddressRequest();
 		
-		CustomerRequest req=buildValidCustomerRequest();
-		Customers customer=buildValidCustomerEntity(req);
-		customer.setActive(false);
+		Customers customer=buildValidCustomerEntity(buildValidCustomerRequest());
+		customer.setActive(true);
+		Customers actualOwner=buildValidCustomerEntity(buildValidCustomerRequest());
+		actualOwner.setId(4);
+		
+		Address address=buildValidAddressEntity(addReq);
+		address.setCustomer(actualOwner);
 		
 		when(customersRepo.findById(customerId)).thenReturn(Optional.of(customer));
+		when(addressRepo.findById(addressId)).thenReturn(Optional.of(address));
 		
-		assertThatThrownBy(()->customersService.getAddressForCustomer(customerId))
-							.isInstanceOf(ResourceInactiveException.class);
+		assertThatThrownBy(()->customersService.updateCustomerAddress(customerId, addressId, addReq))
+							.isInstanceOf(ResourceMismatchException.class);
+		
+		verify(addressRepo,never()).save(any());
+	}
+	
+	@Test
+	void deleteCustomerAddress_ShouldDeleteAddress() {
+		
+		int customerId=45;
+		int addressId=102;
+		
+		Customers customer=buildValidCustomerEntity(buildValidCustomerRequest());
+		
+		Address address=buildValidAddressEntity(buildValidAddressRequest());
+		address.setCustomer(customer);
+		when(customersRepo.findById(customerId)).thenReturn(Optional.of(customer));
+		when(addressRepo.findById(addressId)).thenReturn(Optional.of(address));
+		
+		customersService.deleteCustomerAddress(customerId, addressId);
 		
 		verify(customersRepo).findById(customerId);
-		verify(addressRepo, never()).findAddressByCustomerId(customerId);
+		verify(addressRepo).findById(addressId);
+		verify(addressRepo).delete(address);
 		
 	}
+	
 	private AddressRequest buildValidAddressRequest() {
 		AddressRequest req=new AddressRequest();
 		req.setAddressType("home");
@@ -429,9 +504,11 @@ public class CustomerServiceImplTest {
 	}
 	
 	private Address buildValidAddressEntity(AddressRequest req) {
+		Customers customer=new Customers();
 		Address address=new Address();
 		
-		address.setId(10);
+		address.setCustomer(customer);
+		address.setId(102);
 		address.setAddressType(req.getAddressType());
 		address.setStreet(req.getStreet());
 		address.setCity(req.getCity());

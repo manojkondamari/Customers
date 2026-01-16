@@ -13,7 +13,7 @@ public interface CustomersService {
 	//CustomersRepo customersRepo;
 	
 	CustomerResponse registerCustomers(CustomerRequest request);
-	CustomerResponse getCustomerDetails(int id);
+	CustomerResponse getCustomerDetails(int id, String username);
 	
 	CustomerResponse updateCustomerDetails(int id, CustomerRequest request);
 	CustomerResponse updateCustomerEmail(int id, String email);
@@ -22,6 +22,6 @@ public interface CustomersService {
 	List<AddressResponse> getAddressForCustomer(int id);
 	
 	AddressResponse registerCustomerAddresses(int id, AddressRequest addressRequest);
-	
-	
+	AddressResponse updateCustomerAddress(int customerId,int addressId,AddressRequest addressRequest);
+	void deleteCustomerAddress(int customerId, int addressId);
 }
