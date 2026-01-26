@@ -7,6 +7,8 @@ import java.util.List;
 
 import org.hibernate.engine.internal.Cascade;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
+
 import jakarta.annotation.Generated;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -128,8 +130,10 @@ public class Customers {
 	}
 
 	@OneToMany(mappedBy="customer", cascade=CascadeType.ALL)
+	@JsonManagedReference
 	private java.util.List<Address> addresses;
 	
 	@OneToOne(mappedBy ="customer", cascade=CascadeType.ALL)
+	@JsonManagedReference
 	private AuthCredentials authCredentials;
 }

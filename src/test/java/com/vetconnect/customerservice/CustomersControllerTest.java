@@ -35,6 +35,7 @@ import com.vetconnect.customerservice.exception.DuplicateCustomerException;
 import com.vetconnect.customerservice.exception.ResourceMismatchException;
 import com.vetconnect.customerservice.repository.CustomersRepo;
 import com.vetconnect.customerservice.security.CustomerUserDetailsService;
+import com.vetconnect.customerservice.security.JwtBlacklistService;
 import com.vetconnect.customerservice.security.JwtService;
 import com.vetconnect.customerservice.security.SecurityConfig;
 import com.vetconnect.customerservice.service.CustomersService;
@@ -44,6 +45,8 @@ import org.springframework.boot.autoconfigure.security.servlet.SecurityFilterAut
 import org.springframework.boot.test.autoconfigure.web.servlet.*;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.StringRedisTemplate;
 
 
 @AutoConfigureMockMvc(addFilters=false)
@@ -62,6 +65,12 @@ public class CustomersControllerTest {
 	@MockBean
 	private CustomersService customerService;
 	
+	@MockBean
+	private JwtBlacklistService jwtBlacklistService;
+	@MockBean
+	private RedisTemplate<String, String> redisTemplate;
+	@MockBean
+	StringRedisTemplate stringRedisTemplate;
 	@MockBean
 	private CustomerUserDetailsService customerUserDetailsService;
 	@MockBean

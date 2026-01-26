@@ -29,8 +29,11 @@ import com.vetconnect.customerservice.dto.AddressRequest;
 import com.vetconnect.customerservice.dto.AddressResponse;
 import com.vetconnect.customerservice.dto.CustomerRequest;
 import com.vetconnect.customerservice.dto.CustomerResponse;
+import com.vetconnect.customerservice.dto.CustomersWithAddressResponse;
 import com.vetconnect.customerservice.dto.UpdateEmailRequest;
 import com.vetconnect.customerservice.entity.Address;
+import com.vetconnect.customerservice.entity.Customers;
+import com.vetconnect.customerservice.repository.CustomersRepo;
 import com.vetconnect.customerservice.service.CustomersService;
 import org.slf4j.*;
 @RestController
@@ -40,13 +43,20 @@ public class CustomersController {
 	private static final org.slf4j.Logger log=org.slf4j.LoggerFactory.getLogger(CustomersController.class);
 	
 	private CustomersService customerService;
-	 CustomersController(CustomersService customerService ){ //CustomersServiceImpl customersServiceImpl
+	//private CustomersRepo customersRepo;
+	
+	 CustomersController(CustomersService customerService){ //CustomersServiceImpl customersServiceImpl
 		this.customerService=customerService;
+		//this.customersRepo=customersRepo;
 		//this.customersServiceImpl = customersServiceImpl;
 	}
+	 @PreAuthorize("permitAll()")
+	 @GetMapping("/test-nplus1")
+	 public List<CustomersWithAddressResponse> testNPlusOne(){
+	List<CustomersWithAddressResponse> list=customerService.testNPlusOne();
+		 return list;
+	 }
 	 
-	 //http://localhost:8080/api/customers
-	
 	@PostMapping
 	public ResponseEntity<CustomerResponse> registerCustomer(@Valid @RequestBody CustomerRequest customerRequest) {
 		CustomerResponse response=customerService.registerCustomers(customerRequest);
@@ -136,5 +146,7 @@ public class CustomersController {
 		
 		return ResponseEntity.noContent().build();
 	}
+	
+
 }
 

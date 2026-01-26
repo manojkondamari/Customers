@@ -67,7 +67,7 @@ public class CustomerServiceImplTest {
 	
 	@BeforeEach
 	void setup() {
-	 customersService=new CustomersServiceImpl(customersRepo, addressRepo, null, passwordEncoder, authCredentialRepository);
+	 customersService=new CustomersServiceImpl(customersRepo, addressRepo, passwordEncoder, authCredentialRepository);
 	}
 	
 	@Test

@@ -21,6 +21,7 @@ import com.vetconnect.customerservice.dto.AddressRequest;
 import com.vetconnect.customerservice.dto.AddressResponse;
 import com.vetconnect.customerservice.dto.CustomerRequest;
 import com.vetconnect.customerservice.dto.CustomerResponse;
+import com.vetconnect.customerservice.dto.CustomersWithAddressResponse;
 import com.vetconnect.customerservice.entity.Address;
 import com.vetconnect.customerservice.entity.AuthCredentials;
 import com.vetconnect.customerservice.entity.Customers;
@@ -39,22 +40,16 @@ import com.vetconnect.customerservice.repository.CustomersRepo;
 public class CustomersServiceImpl implements CustomersService {
 
     private final AuthCredentialRepository authCredentialRepository;
-
-    private final PasswordEncoder passwordEncoder;
-
-    private final AuthController authController;
-
+	private final PasswordEncoder passwordEncoder;
+   
 	private final CustomersRepo customersRepo;
-
 	public final AddressesRepo addressRepo;
 	
-	public CustomersServiceImpl(CustomersRepo customersRepo, AddressesRepo addressRepo, AuthController authController, PasswordEncoder passwordEncoder, AuthCredentialRepository authCredentialRepository)
-	{
+	public CustomersServiceImpl(CustomersRepo customersRepo, AddressesRepo addressRepo, PasswordEncoder passwordEncoder, AuthCredentialRepository authCredentialRepository)
+	{	this.addressRepo=addressRepo;
+		this.passwordEncoder=passwordEncoder;
+		this.authCredentialRepository=authCredentialRepository;
 		this.customersRepo=customersRepo;
-		this.addressRepo = addressRepo;
-		this.authController = authController;
-		this.passwordEncoder = passwordEncoder;
-		this.authCredentialRepository = authCredentialRepository;
 	}	
 	
 	private static final org.slf4j.Logger log=LoggerFactory.getLogger(CustomersServiceImpl.class);
@@ -351,6 +346,31 @@ public class CustomersServiceImpl implements CustomersService {
 		
 		return addressResponse;
 	}
-
+	
+	@Override
+	public List<CustomersWithAddressResponse> testNPlusOne() {
+		List<Customers> customers= customersRepo.findAll();
+		
+		
+		return customers.stream()
+				.map(this::mapToCustomerWithAddressResponse)
+				.collect(Collectors.toList());
+	}
+	
+	private CustomersWithAddressResponse mapToCustomerWithAddressResponse(Customers customers) {
+		
+		CustomersWithAddressResponse customersWithAddressResponse= new CustomersWithAddressResponse();
+		
+		customersWithAddressResponse.setAddressResponse(toAddressResponseList(customers.getAddresses()));
+		customersWithAddressResponse.setActive(customers.isActive());
+		customersWithAddressResponse.setId(customers.getId());
+		customersWithAddressResponse.setDateOfBirth(customers.getDateOfBirth());
+		customersWithAddressResponse.setEmail(customers.getEmail());
+		customersWithAddressResponse.setFirstName(customers.getFirstName());
+		customersWithAddressResponse.setLastName(customers.getLastName());
+		customersWithAddressResponse.setPhoneNumber(customers.getPhoneNumber());
+		return customersWithAddressResponse;
+		
+	}
 	
 }
