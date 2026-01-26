@@ -6,7 +6,9 @@ import com.vetconnect.customerservice.dto.AddressRequest;
 import com.vetconnect.customerservice.dto.AddressResponse;
 import com.vetconnect.customerservice.dto.CustomerRequest;
 import com.vetconnect.customerservice.dto.CustomerResponse;
+import com.vetconnect.customerservice.dto.CustomersWithAddressResponse;
 import com.vetconnect.customerservice.entity.Address;
+import com.vetconnect.customerservice.entity.Customers;
 import com.vetconnect.customerservice.repository.CustomersRepo;
 
 public interface CustomersService {
@@ -24,4 +26,6 @@ public interface CustomersService {
 	AddressResponse registerCustomerAddresses(int id, AddressRequest addressRequest);
 	AddressResponse updateCustomerAddress(int customerId,int addressId,AddressRequest addressRequest);
 	void deleteCustomerAddress(int customerId, int addressId);
+	
+	 List<CustomersWithAddressResponse> testNPlusOne();
 }

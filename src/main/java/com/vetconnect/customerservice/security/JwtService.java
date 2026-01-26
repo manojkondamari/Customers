@@ -72,4 +72,10 @@ public class JwtService {
 				.parseClaimsJws(token)
 				.getBody();
 	}
+	
+	public long getExpiry(String token) {
+		Claims claims=extractClaims(token);
+		Date expiry=claims.getExpiration();
+		return (expiry.getTime() - System.currentTimeMillis())/1000;
+	}
 }

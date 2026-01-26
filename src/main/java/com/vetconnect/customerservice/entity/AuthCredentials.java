@@ -2,6 +2,9 @@ package com.vetconnect.customerservice.entity;
 
 import java.time.LocalDateTime;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -21,6 +24,7 @@ public class AuthCredentials {
 	
 	@OneToOne
 	@JoinColumn(name="customerId", unique=true)
+	@JsonIgnore
 	private Customers customer;
 	
 	@Column(nullable=false,unique=true)
